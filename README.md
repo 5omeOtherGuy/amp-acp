@@ -86,7 +86,7 @@ Run `amp login` before starting amp-acp. The adapter and CLI share the same Amp 
 ## Features
 
 - **Streaming responses** — Amp messages, tool calls, and thinking are streamed in real-time via ACP
-- **Image support** — Handles image content blocks from Amp (base64 and URL)
+- **Image support** — Sends attached PNG, JPEG, GIF, and WebP images to Amp in local and Orb sessions, and handles image content blocks from Amp (base64 and URL)
 - **MCP passthrough** — MCP servers configured in Zed are automatically passed through to Amp
 - **Session configuration** — Choose local or Orb execution, configure permissions (*Default* or *Bypass*), and select the current Amp mode via ACP config options: the built-in `low`, `medium`, `high`, and `ultra` modes, plus any agent modes registered by Amp plugins (project, system, personal, or workspace — such as `grok45` from the Workspace `official-modes` plugin)
 - **`/init` command** — Type `/init` to generate an `AGENTS.md` file for your project
@@ -94,6 +94,14 @@ Run `amp login` before starting amp-acp. The adapter and CLI share the same Amp 
 - **Session resume** — `session/load` reattaches to the underlying Amp thread after amp-acp restarts, so ACP clients can reopen earlier sessions
 - **Native thread lifecycle** — ACP clients can persist Amp's durable thread ID and archive or unarchive that exact thread
 - **Token usage** — each `session/prompt` answers with the turn's token usage (`PromptResponse.usage`: input, output, cache reads and writes), counted from the usage Amp reports for each model response
+
+### Image prompts
+
+ACP image blocks must contain base64 `data` and a supported `mimeType` (`image/png`, `image/jpeg`, `image/gif`, or `image/webp`). Unsupported types, empty data, and malformed base64 return an invalid-params error rather than running an incomplete prompt.
+
+Local image turns use Amp CLI's `--stream-json-input` with ordered text/image content blocks. Orb image turns use `--orb-execute --attach`: images are written to private temporary files, uploaded by Amp, and appended to the text prompt as Amp attachment URLs in image order. Temporary files are removed after execution, including failure and cancellation. Images are uploaded to Amp, not left as local paths the orb cannot read.
+
+Image turns use these CLI routes even with `AMP_ACP_TRANSPORT=sdk`: the pinned SDK's streaming input schema accepts text only, and its Orb executor rejects streaming input. Text-only turns retain their existing transport. Use an Amp CLI supporting `--stream-json-input` and, for Orb images, `--attach` (verified with CLI `0.0.1791720050-g0a7ff0`). If the installed CLI lacks those flags or an upload fails, the prompt fails visibly; images are never silently omitted. See [Amp CLI](https://ampcode.com/docs/cli) and [SDK input types and remote executor restrictions](https://ampcode.com/docs/sdk/typescript).
 
 ### Native Amp thread lifecycle extension
 

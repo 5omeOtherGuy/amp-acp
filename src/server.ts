@@ -31,6 +31,7 @@ import {
   isAmpThreadId,
   setAmpThreadArchived,
   type AmpExecutionOptions,
+  type AmpPromptContent,
   type AmpThreadLifecycleOptions,
   type AmpTransport,
 } from './amp-transport.js';
@@ -465,11 +466,12 @@ export class AmpAcpAgent implements Agent {
   async prompt(params: PromptRequest): Promise<PromptResponse> {
     const s = this.sessions.get(params.sessionId);
     if (!s) throw new Error('Session not found');
-    s.cancelled = false;
-    s.active = true;
 
     let textInput = '';
+    let pendingText = '';
+    const content: AmpPromptContent[] = [];
     for (const chunk of params.prompt) {
+      const textStart = textInput.length;
       switch (chunk.type) {
         case 'text':
           if (chunk.text.trim() === '/init') {
@@ -494,11 +496,25 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules), Claude rules (CLA
           }
           break;
         case 'image':
+          if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(chunk.mimeType)) {
+            throw RequestError.invalidParams(undefined, `Unsupported image MIME type: ${chunk.mimeType}. Use PNG, JPEG, GIF, or WebP.`);
+          }
+          if (!chunk.data || chunk.data.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(chunk.data)) {
+            throw RequestError.invalidParams(undefined, 'Image data must be non-empty base64.');
+          }
+          if (pendingText) content.push({ type: 'text', text: pendingText });
+          pendingText = '';
+          content.push({ type: 'image', source: { type: 'base64', media_type: chunk.mimeType, data: chunk.data } });
           break;
         default:
           break;
       }
+      pendingText += textInput.slice(textStart);
     }
+    if (pendingText) content.push({ type: 'text', text: pendingText });
+    const hasImages = content.some((block) => block.type === 'image');
+    s.cancelled = false;
+    s.active = true;
 
     const options: AmpExecutionOptions = {
       cwd: s.cwd,
@@ -533,7 +549,7 @@ If there are Cursor rules (in .cursor/rules/ or .cursorrules), Claude rules (CLA
 
     try {
       const transport = s.executor === 'orb' ? this.orbTransport : this.transport;
-      for await (const message of transport.execute({ prompt: textInput, options, signal: controller.signal })) {
+      for await (const message of transport.execute({ prompt: textInput, ...(hasImages ? { content } : {}), options, signal: controller.signal })) {
         turnUsage.add(message);
         if (message.session_id) {
           if (!isAmpThreadId(message.session_id)) {
