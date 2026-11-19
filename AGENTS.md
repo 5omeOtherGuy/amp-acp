@@ -7,37 +7,19 @@
 - `bun test src/` — Run tests with Bun's built-in test runner
 - `bun run test:e2e:live` — Full-stack opt-in verification (binary + fake-CLI e2e + real Amp CLI + orb execution); needs an authenticated Amp CLI, consumes real Amp usage
 
-## Architecture
-This is an ACP (Agent Client Protocol) adapter that bridges Amp Code to ACP-compatible clients like Zed.
-
-- `src/index.ts` — Entry point, redirects console to stderr (stdout reserved for ACP stream)
-- `src/run-acp.ts` — Sets up ACP connection using stdin/stdout JSON streams
-- `src/server.ts` — `AmpAcpAgent` class: handles sessions, prompts, MCP config, and calls `@ampcode/sdk` (formerly `@sourcegraph/amp-sdk`)
-- `src/amp-transport.ts` — Executes Amp through the CLI or SDK and manages native thread archival
-- `src/thread-mapping-store.ts` — Persists durable ACP-session-to-Amp-thread mappings for resume and lifecycle operations
-- `src/to-acp.ts` — Converts Amp stream events to ACP `sessionUpdate` notifications
-- `src/mcp-config.ts` — Converts ACP MCP server configs to Amp SDK format
-- `src/plugin-modes.ts` — Discovers agent modes from Amp plugins (`// @amp-agent-mode` comments in project/system plugin files, plus `amp plugins list` for Personal/Workspace plugins, cached 60s per cwd). Unknown but non-empty mode values pass through to Amp unchanged
-- `src/turn-usage.ts` — Aggregates a turn's token usage from Amp stream messages (last report wins per response id) for `PromptResponse.usage`
-- `src/utils.ts` — Node-to-Web stream converters
-
-## Code Style
-- TypeScript with ES modules (`"type": "module"` in package.json), use `.js` extension in imports
-- Strict mode enabled; avoid `any` and type assertions unless necessary
-- Use `console.error` for logging (stdout is for ACP protocol only)
-- Error handling: throw `RequestError` from `@agentclientprotocol/sdk` for protocol errors
-- Naming: camelCase for variables/functions, PascalCase for classes/interfaces
+## Rules
+- stdout is for the ACP protocol only: log with `console.error`.
 
 ## Update Protocol
 
 Canonical documentation:
 
-- `README.md` — Installation, configuration, and user-facing capabilities
-- `AGENTS.md` — Architecture, development commands, and repository conventions
+- `README.md` — Installation, configuration, user-facing capabilities, architecture and code style
+- `AGENTS.md` — Development commands and repository rules
 - `docs/mcp-passthrough.md` — MCP configuration behavior and troubleshooting
 - `docs/npm-oidc-trusted-publishing.md` — npm publishing and release authentication
 
-| Change type | README | Architecture list | Specialized docs |
+| Change type | README | README architecture list | Specialized docs |
 |---|---:|---:|---:|
 | User-facing capability | Yes | Maybe | Maybe |
 | Architecture or state change | Yes | Yes | Maybe |

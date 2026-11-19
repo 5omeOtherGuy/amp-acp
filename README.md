@@ -245,6 +245,29 @@ This opt-in command is never enabled by CI. It runs the binary integration and f
 
 Everything also runs inside an Amp orb out of the box — orbs ship the Amp CLI and authentication, and the repository's `.agents/setup` installs the dependencies — so maintainers can ask an Amp thread to run `bun run test:e2e:live` instead of testing with a local editor.
 
+### Architecture
+
+This is an ACP (Agent Client Protocol) adapter that bridges Amp Code to ACP-compatible clients like Zed.
+
+- `src/index.ts` — Entry point, redirects console to stderr (stdout reserved for ACP stream)
+- `src/run-acp.ts` — Sets up ACP connection using stdin/stdout JSON streams
+- `src/server.ts` — `AmpAcpAgent` class: handles sessions, prompts, MCP config, and calls `@ampcode/sdk` (formerly `@sourcegraph/amp-sdk`)
+- `src/amp-transport.ts` — Executes Amp through the CLI or SDK and manages native thread archival
+- `src/thread-mapping-store.ts` — Persists durable ACP-session-to-Amp-thread mappings for resume and lifecycle operations
+- `src/to-acp.ts` — Converts Amp stream events to ACP `sessionUpdate` notifications
+- `src/mcp-config.ts` — Converts ACP MCP server configs to Amp SDK format
+- `src/plugin-modes.ts` — Discovers agent modes from Amp plugins (`// @amp-agent-mode` comments in project/system plugin files, plus `amp plugins list` for Personal/Workspace plugins, cached 60s per cwd). Unknown but non-empty mode values pass through to Amp unchanged
+- `src/turn-usage.ts` — Aggregates a turn's token usage from Amp stream messages (last report wins per response id) for `PromptResponse.usage`
+- `src/utils.ts` — Node-to-Web stream converters
+
+### Code style
+
+- TypeScript with ES modules (`"type": "module"` in package.json), use `.js` extension in imports
+- Strict mode enabled; avoid `any` and type assertions unless necessary
+- Use `console.error` for logging (stdout is for ACP protocol only)
+- Error handling: throw `RequestError` from `@agentclientprotocol/sdk` for protocol errors
+- Naming: camelCase for variables/functions, PascalCase for classes/interfaces
+
 ## Troubleshooting
 
 **Adapter doesn't start**: Make sure you have Node.js 18+ (for `npx`) or use a pre-built binary / Zed extension instead.
