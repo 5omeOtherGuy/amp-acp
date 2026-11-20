@@ -1,3 +1,5 @@
+Archived 2026-11-20: this repository is retired. Source, branches, tags and existing releases are retained for reference.
+
 # ACP adapter for Amp
 
 [![CI](https://github.com/tao12345666333/amp-acp/actions/workflows/ci.yml/badge.svg)](https://github.com/tao12345666333/amp-acp/actions/workflows/ci.yml)

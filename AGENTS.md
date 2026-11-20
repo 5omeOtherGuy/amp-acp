@@ -1,3 +1,7 @@
+## Profile
+
+- Stage: archived (repository standard)
+
 # AGENTS.md
 
 ## Commands
